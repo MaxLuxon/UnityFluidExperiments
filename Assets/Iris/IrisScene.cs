@@ -355,8 +355,8 @@ public class IrisScene : MonoBehaviour {
 
 
         // The Advect Density function leads to a loss of Density
-        // So in order to preserve the whole density we sum the density before and after the funtion call
-        // And the adjust the and result
+        // So in order to preserve the whole density we sum the density before and after the function call
+        // And then adjust the end result
         float dSumBefore=0;
          
         for (int x2=1 ; x2<Resolution-1 ; x2++ ) {
