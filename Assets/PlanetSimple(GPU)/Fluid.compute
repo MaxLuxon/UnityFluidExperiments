@@ -1,0 +1,158 @@
+﻿#include "UnityCG.cginc"
+
+#pragma target 3.5
+
+#pragma kernel Advect
+#pragma kernel Project0
+#pragma kernel Project1
+#pragma kernel Diffuse0
+#pragma kernel AddForce
+#pragma kernel AddDye
+#pragma kernel Project2
+
+// Common parameter
+float Time;
+float DeltaTime;
+
+// For Adding Dye & Force
+Texture2D<float4> Map_In;
+SamplerState samplerMap_In;
+
+RWTexture2D<float4> V4Field_in;
+SamplerState samplerV4Field_in;
+
+RWTexture2D<float4> V4Field_Temp;
+RWTexture2D<float4> V4Field_out;
+
+float Alpha, Beta;
+
+RWTexture2D<float4> Div;
+
+
+int2 ix(int2 index, int2 dim){
+
+    return int2((index.x+dim.x)%dim.x,(index.y+dim.y)%dim.y);
+}
+
+// AddForce
+[numthreads(8, 8, 1)]
+void AddForce(uint2 tid : SV_DispatchThreadID)
+{
+    uint2 dim;
+    V4Field_in.GetDimensions(dim.x, dim.y);
+
+    float2 uv = (tid + 0.5) / dim;
+
+    float3 dir2=(Map_In.SampleLevel(samplerMap_In, uv +float2(Time*0.05f,0), 0).xyz+float3(0.003921568627,0.003921568627,0.003921568627)*0.5f)*2-1;
+   
+     V4Field_in[tid] = V4Field_out[tid]-V4Field_out[tid]*DeltaTime*0.5f + float4(dir2.x,dir2.y,0,0)*((sin(Time*2+uv.x*2)*0.5+0.5)*0.5+0.5)*DeltaTime*5;
+    
+}
+
+
+// AddDye
+[numthreads(8, 8, 1)]
+void AddDye(uint2 tid : SV_DispatchThreadID)
+{
+    uint2 dim;
+    V4Field_in.GetDimensions(dim.x, dim.y);
+
+    float2 uv = (tid + 0.5) / dim;
+
+    float4 d=Map_In.SampleLevel(samplerMap_In, uv+float2(Time*0.05f,0) , 0);
+    
+    V4Field_in[tid] = V4Field_out[tid] + float4(d.x,d.y,d.z,0)*DeltaTime*6.1;
+    V4Field_in[tid] -= max(length(V4Field_out[tid]) -1,0)*DeltaTime*0.1;
+    V4Field_in[tid]= max( V4Field_in[tid],0);
+    
+}
+
+// Advect
+[numthreads(8, 8, 1)]
+void Advect(uint2 tid : SV_DispatchThreadID){
+
+    uint2 dim;
+    V4Field_out.GetDimensions(dim.x, dim.y);
+      
+    float2 value= V4Field_Temp[tid].xy;
+
+    float2 uv = (tid + 0.5) / dim;
+    float2 duv = value * DeltaTime*dim.x/800.0f;
+
+    V4Field_out[tid] = Map_In.SampleLevel(samplerMap_In, uv - duv, 0);
+    
+                    
+}
+
+// Diffuse
+[numthreads(8, 8, 1)]
+void Diffuse0(uint2 tid : SV_DispatchThreadID){
+          
+   uint2 dim;
+   V4Field_in.GetDimensions(dim.x, dim.y);
+   
+   V4Field_out[tid] = (V4Field_in[ix(tid + int2(-1, 0), dim)] + V4Field_in[ix(tid + int2(1, 0), dim)] +
+                       V4Field_in[ix(tid + int2(0, -1), dim)] + V4Field_in[ix(tid + int2(0, 1), dim)] + Alpha * V4Field_Temp[tid]) / Beta;
+                   
+                   
+  
+ 
+}
+
+
+
+[numthreads(8, 8, 1)]
+void Project0(uint2 tid : SV_DispatchThreadID)
+{
+    uint2 dim;
+    V4Field_in.GetDimensions(dim.x, dim.y);
+    
+    // This function calculates how much "mass" is flowing in/ out the pixel
+    // The Div Map represent the mass change of each pixel
+    // Since water ist uncompressible the mass change should be 0
+    // So in the next project steps we will try to achieve (force) this
+    
+    float u=length(V4Field_in[ix(tid + int2(0, 1), dim)])+length(V4Field_in[ix(tid + int2(0, -1), dim)])*0.1;
+    Div[tid] =  float4(-( V4Field_in[ix(tid + int2(1, 0), dim)].x -V4Field_in[ix(tid + int2(-1, 0), dim)].x +
+                   V4Field_in[ix(tid + int2(0, 1), dim)].y -V4Field_in[ix(tid + int2(0, -1), dim)].y ),0,0, u);
+    
+    V4Field_Temp[tid] = float4(0,0,0,0);
+    
+
+
+
+}
+
+[numthreads(8, 8, 1)]
+void Project1(uint2 tid : SV_DispatchThreadID)
+{
+    uint2 dim;
+    V4Field_Temp.GetDimensions(dim.x, dim.y);
+    
+    float u=(Div[tid].x+  (V4Field_Temp[ix(tid + int2(-1, 0), dim)].x+
+                                         V4Field_Temp[ix(tid + int2(1,  0), dim)].x+
+                                         V4Field_Temp[ix(tid + int2(0, -1), dim)].x+
+                                         V4Field_Temp[ix(tid + int2(0,  1), dim)].x))/(4+0.01f);
+
+    V4Field_out[tid] = float4(u,0,0,0);
+ 
+}
+
+
+[numthreads(8, 8, 1)]
+void Project2(uint2 tid : SV_DispatchThreadID)
+{
+    uint2 dim;
+    V4Field_out.GetDimensions(dim.x, dim.y);
+    float h = 1.0/dim.x;
+    float xPressure= -V4Field_Temp[ix(tid + int2(1, 0), dim)].x*0.25+V4Field_Temp[ix(tid + int2(-1, 0), dim)].x*0.25;
+    float yPressure= -V4Field_Temp[ix(tid + int2(0, 1), dim)].x*0.25+V4Field_Temp[ix(tid + int2(0, -1), dim)].x*0.25;
+
+     V4Field_in[tid]= V4Field_out[tid]+ float4(xPressure,yPressure,0,0);
+     
+   
+}
+
+
+
+
