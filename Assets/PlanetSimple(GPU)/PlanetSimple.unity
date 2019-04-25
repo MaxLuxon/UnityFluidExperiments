@@ -405,7 +405,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ComputeShader: {fileID: 7200000, guid: 6d87bdf11584b48a5a265631bd6f15f5, type: 3}
-  VisualShader: {fileID: 4800000, guid: 0105c86ba64344051ad9316674f2465c, type: 3}
+  VisualShader: {fileID: 4800000, guid: c06fcd91264fc4089b3b69ed95164f72, type: 3}
   Resolution: 600
   PlanetMaterial: {fileID: 2100000, guid: a1a20a7aacd724a5a852c01a741555c2, type: 2}
   DyeTexture: {fileID: 2800000, guid: 5e35d768f59a54309a3adc99ade44997, type: 3}

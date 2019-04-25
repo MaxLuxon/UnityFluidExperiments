@@ -5,7 +5,8 @@ Material:
   serializedVersion: 6
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
   m_Name: Iris
   m_Shader: {fileID: 4800000, guid: f68e55951e1a64853a653f6a30fc1a08, type: 3}
   m_ShaderKeywords: 
