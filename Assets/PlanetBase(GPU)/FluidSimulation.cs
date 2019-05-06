@@ -143,7 +143,7 @@ public class FluidSimulation {
         ComputeShader.SetFloat("DeltaTime", dt);
         ComputeShader.SetFloat("Time", Time.time);
 
-        // Add Dye
+        // Add Velocity
         if (Input.GetKey(KeyCode.P)) {
 
             ComputeShader.SetTexture(Kernels.AddForce, "Map_In", dyeTexture);
@@ -153,7 +153,7 @@ public class FluidSimulation {
 
         }
 
-        // Add velocity
+        // Add Dye
         if (Input.GetKey(KeyCode.L)) {
 
             ComputeShader.SetTexture(Kernels.AddDye, "Map_In", velocityTexture);
